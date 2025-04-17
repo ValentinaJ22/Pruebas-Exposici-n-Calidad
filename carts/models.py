@@ -74,7 +74,7 @@ def set_cart_id(sender, instance, *args, **kwargs):
     #si el carrito no posee un identificador unico
     if not instance.cart_id:
         instance.cart_id = str(uuid.uuid4())
-
+        
 def update_totals(sender, instance, action, *args, **kwargs):
     #cuando un producto se agrege, se elimine o el carrito se limpie
     #se calcula el subtotal y total del carrito

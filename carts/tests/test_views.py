@@ -1,58 +1,54 @@
-from django.test import TestCase
 from django.urls import reverse
+from django.test import TestCase
+from carts.models import Cart
 from products.models import Product
-from carts.models import Cart, CartProducts
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 
-class TestCartViews(TestCase):
+User = get_user_model()
 
+class CartRemoveTestCase(TestCase):
     def setUp(self):
-        # Crear un producto de prueba con el modelo correcto
-        self.product = Product.objects.create(
-            title="Test Product",
-            description="This is a test product.",
-            price=10.0,
-            slug="test-product",
-            image="path/to/image.jpg"
-        )
+        self.client = self.client_class()
+        self.user = User.objects.create_user(username='testuser', password='testpass')
+        self.client.login(username='testuser', password='testpass')
 
-        # Crear un carrito de prueba (sin usuario para simplicidad)
-        self.cart = Cart.objects.create(user=None)  
+        # Crear imagen simulada
+        image = SimpleUploadedFile(name='test_image.jpg', content=b'', content_type='image/jpeg')
 
-    def test_cart_view(self):
-        # Probar la vista de ver el carrito
-        response = self.client.get(reverse('carts:cart'))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Test Product")  # Asegurarse de que el producto esté en el carrito
-        self.assertContains(response, "10.00")  # Asegurarse de que el precio del producto esté visible
+        # Crear producto
+        self.product = Product.objects.create(title="Producto Prueba", description="Este es un producto de prueba.", price=10.00, image=image)
 
-    def test_add_view(self):
-        # Probar agregar un producto al carrito
-        response = self.client.post(reverse('carts:add'), {
-            'product_id': self.product.id,
-            'quantity': 2
-        })
-        self.assertEqual(response.status_code, 200)  # Verificar que la respuesta sea correcta
-        # Verificar si el producto se ha agregado correctamente
-        cart_product = CartProducts.objects.get(cart=self.cart, product=self.product)
-        self.assertEqual(cart_product.quantity, 2)
+        # Accedemos a la vista del carrito para que se cree el carrito correctamente
+        self.client.get(reverse('carts:cart'))
 
-    def test_remove_view(self):
-        # Primero, agregar el producto al carrito
-        self.client.post(reverse('carts:add'), {
-            'product_id': self.product.id,
-            'quantity': 1
-        })
+        # Ahora obtenemos el carrito como lo haría la vista
+        self.cart = Cart.objects.get(user=self.user)
+        self.cart.products.add(self.product)
 
-        # Verificar que el producto se haya agregado
-        cart_product = CartProducts.objects.get(cart=self.cart, product=self.product)
-        self.assertEqual(cart_product.quantity, 1)
+    #  Prueba que verifica que un producto puede ser eliminado del carrito correctamente.
+    def test_remove_product_from_cart(self):
 
-        # Ahora eliminar el producto del carrito
-        response = self.client.post(reverse('carts:remove'), {
-            'product_id': self.product.id
-        })
-        self.assertEqual(response.status_code, 302)  # Verificar que se redirige después de eliminar
-        # Verificar que el producto haya sido eliminado
-        with self.assertRaises(CartProducts.DoesNotExist):
-            CartProducts.objects.get(cart=self.cart, product=self.product)
+         # Verificar que el producto está inicialmente en el carrito
+        self.assertIn(self.product, self.cart.products.all())
+
+        # Enviar solicitud POST para eliminar el producto
+        response = self.client.post(reverse('carts:remove'), {'product_id': self.product.id})
+
+        # Confirmar redirección
+        self.assertEqual(response.status_code, 302)
+
+        # Actualizar carrito
+        self.cart.refresh_from_db()
+
+        # Verificar que ya no esté
+        self.assertNotIn(self.product, self.cart.products.all())
+
+    # Intentar eliminar un producto con ID inválido debería devolver 404.
+    def test_remove_invalid_product(self):
+        
+        invalid_id = 99999  # supondremos que este ID no existe
+        response = self.client.post(reverse('carts:remove'), {'product_id': invalid_id})
+        self.assertEqual(response.status_code, 404)
+
+

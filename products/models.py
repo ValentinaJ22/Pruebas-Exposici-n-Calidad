@@ -30,4 +30,3 @@ def set_slug(sender, instance, *args, **kwargs):
         instance.slug = slug
 #antes que un objeto Product se almacene, se ejecutara el callback set_slug
 pre_save.connect(set_slug, sender=Product)
-

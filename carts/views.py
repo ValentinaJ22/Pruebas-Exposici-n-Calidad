@@ -49,3 +49,4 @@ def remove(request):
     cart.products.remove(product)
 
     return redirect('carts:cart')
+

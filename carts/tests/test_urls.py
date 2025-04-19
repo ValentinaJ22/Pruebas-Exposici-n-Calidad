@@ -20,3 +20,7 @@ class TestUrls(TestCase):
         path = reverse('carts:remove')
         resolver = resolve(path)
         self.assertEqual(resolver.url_name, 'remove')  # SIN prefijo
+
+
+
+

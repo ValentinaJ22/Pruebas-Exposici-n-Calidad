@@ -58,6 +58,7 @@ class CartProductsManager(models.Manager):
             quantity = object.quantity + quantity
         object.update_quantity(quantity)
         return object
+    
 class CartProducts(models.Model):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
